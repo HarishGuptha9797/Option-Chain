@@ -16,7 +16,6 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.18.0",
-    "axios-cookiejar-support": "^7.0.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -26,7 +25,6 @@
     "react-dom": "^19.0.1",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
-    "tough-cookie": "^6.0.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {
@@ -34,7 +32,6 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@types/tough-cookie": "^4.0.5",
     "@vercel/node": "^5.8.17",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",

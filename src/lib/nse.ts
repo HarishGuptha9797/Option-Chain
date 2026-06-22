@@ -1,6 +1,4 @@
 import axios from 'axios';
-import { wrapper } from 'axios-cookiejar-support';
-import { CookieJar } from 'tough-cookie';
 
 const INDICES = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY'];
 
@@ -19,38 +17,21 @@ const HEADERS = {
 };
 
 class NSEClient {
-  private client: any;
-  private jar: CookieJar;
+  private cookies: string = '';
   private cookiesPrimed: boolean = false;
 
-  constructor() {
-    this.jar = new CookieJar();
-    this.client = wrapper(
-      axios.create({
-        jar: this.jar,
-        headers: HEADERS,
-        timeout: 4000,
-        withCredentials: true,
-      })
-    );
-  }
-
   private newSession() {
-    this.jar = new CookieJar();
-    this.client = wrapper(
-      axios.create({
-        jar: this.jar,
-        headers: HEADERS,
-        timeout: 4000,
-        withCredentials: true,
-      })
-    );
+    this.cookies = '';
     this.cookiesPrimed = false;
   }
 
   private async primeCookies(): Promise<void> {
     try {
-      await this.client.get(NSE_OPTION_CHAIN_PAGE);
+      const resp = await axios.get(NSE_OPTION_CHAIN_PAGE, { headers: HEADERS, timeout: 4000 });
+      const setCookies = resp.headers['set-cookie'];
+      if (setCookies && Array.isArray(setCookies)) {
+        this.cookies = setCookies.map(c => c.split(';')[0]).join('; ');
+      }
       this.cookiesPrimed = true;
       await new Promise((resolve) => setTimeout(resolve, 400));
     } catch (e: any) {
@@ -58,15 +39,22 @@ class NSEClient {
     }
   }
 
+  private getRequestHeaders() {
+    return {
+      ...HEADERS,
+      Cookie: this.cookies,
+    };
+  }
+
   public async getExpiries(symbol: string): Promise<string[]> {
     if (!this.cookiesPrimed) await this.primeCookies();
 
     try {
-      let resp = await this.client.get(NSE_CONTRACT_INFO_API, { params: { symbol } });
+      let resp = await axios.get(NSE_CONTRACT_INFO_API, { params: { symbol }, headers: this.getRequestHeaders(), timeout: 4000 });
       if (resp.status === 401 || resp.status === 403) {
         this.newSession();
         await this.primeCookies();
-        resp = await this.client.get(NSE_CONTRACT_INFO_API, { params: { symbol } });
+        resp = await axios.get(NSE_CONTRACT_INFO_API, { params: { symbol }, headers: this.getRequestHeaders(), timeout: 4000 });
       }
 
       const data = resp.data;
@@ -94,7 +82,7 @@ class NSEClient {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (!this.cookiesPrimed) await this.primeCookies();
-        const resp = await this.client.get(url);
+        const resp = await axios.get(url, { headers: this.getRequestHeaders(), timeout: 4000 });
         
         if (resp.status === 401 || resp.status === 403) {
           this.newSession();
@@ -104,6 +92,10 @@ class NSEClient {
         
         return resp.data;
       } catch (e: any) {
+        if (e.response && (e.response.status === 401 || e.response.status === 403)) {
+          this.newSession();
+          if (attempt === 0) continue;
+        }
         if (attempt === 0) {
           this.newSession();
           continue;
@@ -117,7 +109,7 @@ class NSEClient {
   public async getVix(): Promise<{ last: number | null; percentChange: number | null }> {
     try {
       if (!this.cookiesPrimed) await this.primeCookies();
-      const resp = await this.client.get(NSE_VIX_API);
+      const resp = await axios.get(NSE_VIX_API, { headers: this.getRequestHeaders(), timeout: 4000 });
       const data = resp.data;
       for (const item of data?.data || []) {
         const sym = (item.indexSymbol || item.index || '').toUpperCase();
