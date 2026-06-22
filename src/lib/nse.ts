@@ -29,7 +29,7 @@ class NSEClient {
       axios.create({
         jar: this.jar,
         headers: HEADERS,
-        timeout: 10000,
+        timeout: 4000,
         withCredentials: true,
       })
     );
@@ -41,7 +41,7 @@ class NSEClient {
       axios.create({
         jar: this.jar,
         headers: HEADERS,
-        timeout: 10000,
+        timeout: 4000,
         withCredentials: true,
       })
     );

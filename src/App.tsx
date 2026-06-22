@@ -52,14 +52,22 @@ export default function App() {
     try {
       // Step 1: get nearest expiry
       const expRes = await fetch(`/api/expiries?symbol=${activeSymbol}`);
-      if (!expRes.ok) throw new Error(await expRes.text());
+      if (!expRes.ok) {
+        let errMessage = 'Failed to fetch expiries';
+        try { const errData = await expRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await expRes.text(); }
+        throw new Error(errMessage);
+      }
       const { expiries } = await expRes.json();
       const nearest = expiries[0];
 
       // Step 2: fetch chain and VIX
       setStatus(`Fetching chain for ${activeSymbol} (${nearest}) ...`);
       const chainRes = await fetch(`/api/chain?symbol=${activeSymbol}&expiry=${nearest}`);
-      if (!chainRes.ok) throw new Error(await chainRes.text());
+      if (!chainRes.ok) {
+        let errMessage = 'Failed to fetch option chain';
+        try { const errData = await chainRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await chainRes.text(); }
+        throw new Error(errMessage);
+      }
       const { chain, vix } = await chainRes.json();
 
       const parsed = parseChain(activeSymbol, chain, nearest, vix?.last, vix?.percentChange);
