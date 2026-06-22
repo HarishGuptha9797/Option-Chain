@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { nseClient } from '../src/lib/nse';
+import { nseClient } from '../src/lib/nse.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
