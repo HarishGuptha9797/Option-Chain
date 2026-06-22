@@ -225,12 +225,12 @@ export const ChartsPopup: React.FC<ChartPopupProps> = ({ snapshot, strikeRange, 
                 <BarChart data={stacked11Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barGap={2}>
                   <defs>
                     <pattern id="ce-hatched" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                      <rect width="6" height="6" fill="#2fd17a" fillOpacity="0.2" />
-                      <line x1="0" y1="0" x2="0" y2="6" stroke="#2fd17a" strokeWidth="2" />
+                      <rect width="6" height="6" fill="#2fd17a" />
+                      <line x1="0" y1="0" x2="0" y2="6" stroke="#1e8f52" strokeWidth="3" />
                     </pattern>
                     <pattern id="pe-hatched" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                      <rect width="6" height="6" fill="#ef5b5b" fillOpacity="0.2" />
-                      <line x1="0" y1="0" x2="0" y2="6" stroke="#ef5b5b" strokeWidth="2" />
+                      <rect width="6" height="6" fill="#ef5b5b" />
+                      <line x1="0" y1="0" x2="0" y2="6" stroke="#b83030" strokeWidth="3" />
                     </pattern>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2a31"/>
@@ -246,12 +246,12 @@ export const ChartsPopup: React.FC<ChartPopupProps> = ({ snapshot, strikeRange, 
                   {/* CE Side */}
                   <Bar dataKey="ceBase" name="CE Base OI" stackId="ce" fill="#2fd17a" maxBarSize={40} />
                   <Bar dataKey="ceInc" name="CE Increase" stackId="ce" fill="url(#ce-hatched)" maxBarSize={40} />
-                  <Bar dataKey="ceDec" name="CE Decrease" stackId="ce" fill="transparent" stroke="#2fd17a" strokeWidth={1} maxBarSize={40} />
+                  <Bar dataKey="ceDec" name="CE Decrease" stackId="ce" fill="transparent" stroke="#1e8f52" strokeWidth={1} strokeDasharray="2 2" maxBarSize={40} />
                   
                   {/* PE Side */}
                   <Bar dataKey="peBase" name="PE Base OI" stackId="pe" fill="#ef5b5b" maxBarSize={40} />
                   <Bar dataKey="peInc" name="PE Increase" stackId="pe" fill="url(#pe-hatched)" maxBarSize={40} />
-                  <Bar dataKey="peDec" name="PE Decrease" stackId="pe" fill="transparent" stroke="#ef5b5b" strokeWidth={1} maxBarSize={40} />
+                  <Bar dataKey="peDec" name="PE Decrease" stackId="pe" fill="transparent" stroke="#b83030" strokeWidth={1} strokeDasharray="2 2" maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
