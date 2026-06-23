@@ -22,6 +22,9 @@ export default function App() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [strikeRange, setStrikeRange] = useState(10);
   
+  const [allExpiries, setAllExpiries] = useState<string[]>([]);
+  const [selectedExpiry, setSelectedExpiry] = useState<string>('');
+
   const [snapshot, setSnapshot] = useState<ChainSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('Not connected');
@@ -45,24 +48,13 @@ export default function App() {
 
   const activeSymbol = symbol === 'CUSTOM' ? (customSymbol.trim().toUpperCase() || 'RELIANCE') : symbol;
 
-  const fetchChain = useCallback(async () => {
+  const fetchChain = useCallback(async (expiryToFetch: string) => {
+    if (!activeSymbol || !expiryToFetch) return;
     setLoading(true);
-    setStatus(`Fetching ${activeSymbol} ...`);
+    setStatus(`Fetching chain for ${activeSymbol} (${expiryToFetch}) ...`);
     setErrorMsg('');
     try {
-      // Step 1: get nearest expiry
-      const expRes = await fetch(`/api/expiries?symbol=${activeSymbol}`);
-      if (!expRes.ok) {
-        let errMessage = 'Failed to fetch expiries';
-        try { const errData = await expRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await expRes.text(); }
-        throw new Error(errMessage);
-      }
-      const { expiries } = await expRes.json();
-      const nearest = expiries[0];
-
-      // Step 2: fetch chain and VIX
-      setStatus(`Fetching chain for ${activeSymbol} (${nearest}) ...`);
-      const chainRes = await fetch(`/api/chain?symbol=${activeSymbol}&expiry=${nearest}`);
+      const chainRes = await fetch(`/api/chain?symbol=${activeSymbol}&expiry=${expiryToFetch}`);
       if (!chainRes.ok) {
         let errMessage = 'Failed to fetch option chain';
         try { const errData = await chainRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await chainRes.text(); }
@@ -70,28 +62,74 @@ export default function App() {
       }
       const { chain, vix } = await chainRes.json();
 
-      const parsed = parseChain(activeSymbol, chain, nearest, vix?.last, vix?.percentChange);
+      const parsed = parseChain(activeSymbol, chain, expiryToFetch, vix?.last, vix?.percentChange);
       setSnapshot(parsed);
       setStatus('Connected — live data');
       setLastUpdated(`Last updated ${new Date().toLocaleTimeString()}`);
     } catch (err: any) {
       setStatus(`Error fetching data`);
       setErrorMsg(err.message || 'Failed to fetch options chain');
+      setSnapshot(null);
     } finally {
       setLoading(false);
     }
   }, [activeSymbol]);
 
-  // Initial Fetch
+  // Fetch expiries whenever activeSymbol changes
   useEffect(() => {
-    fetchChain();
-  }, [symbol, customSymbol]);
+    let active = true;
+    const fetchExpiries = async () => {
+      setAllExpiries([]);
+      setSelectedExpiry('');
+      setStatus(`Fetching expiries for ${activeSymbol}...`);
+      setErrorMsg('');
+      try {
+        const expRes = await fetch(`/api/expiries?symbol=${activeSymbol}`);
+        if (!expRes.ok) {
+          let errMessage = 'Failed to fetch expiries';
+          try { const errData = await expRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await expRes.text(); }
+          throw new Error(errMessage);
+        }
+        const { expiries } = await expRes.json();
+        if (active) {
+          const now = new Date();
+          const threeMonthsLater = new Date();
+          threeMonthsLater.setMonth(now.getMonth() + 3);
+
+          const filteredExpiries = (expiries || []).filter((exp: string) => {
+            const expDate = new Date(exp);
+            // Fallback in case of invalid date parsing
+            if (isNaN(expDate.getTime())) return true;
+            return expDate <= threeMonthsLater;
+          });
+
+          setAllExpiries(filteredExpiries);
+          if (filteredExpiries.length > 0) {
+            setSelectedExpiry(filteredExpiries[0]);
+          }
+        }
+      } catch (err: any) {
+        if (active) setErrorMsg(err.message || 'Failed to fetch expiries');
+      }
+    };
+    const handler = setTimeout(() => {
+      fetchExpiries();
+    }, 600);
+    return () => { active = false; clearTimeout(handler); };
+  }, [activeSymbol]);
+
+  // Fetch chain whenever selectedExpiry changes
+  useEffect(() => {
+    if (selectedExpiry) {
+      fetchChain(selectedExpiry);
+    }
+  }, [selectedExpiry, fetchChain]);
 
   // Auto Refresh Logic
   useEffect(() => {
-    if (autoRefresh) {
+    if (autoRefresh && selectedExpiry) {
       timerRef.current = window.setInterval(() => {
-        fetchChain();
+        fetchChain(selectedExpiry);
       }, refreshInterval * 1000);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -99,7 +137,11 @@ export default function App() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [autoRefresh, refreshInterval, fetchChain]);
+  }, [autoRefresh, refreshInterval, selectedExpiry, fetchChain]);
+
+  const handleManualRefresh = () => {
+    if (selectedExpiry) fetchChain(selectedExpiry);
+  };
 
   const numFmt = new Intl.NumberFormat('en-IN');
   const formatNum = (v?: number) => (v !== undefined ? numFmt.format(Math.round(v)) : '—');
@@ -196,6 +238,18 @@ export default function App() {
             )}
 
             <div>
+              <label className="block text-[10px] font-bold text-neutral-500 mb-1.5 tracking-wider">EXPIRY</label>
+              <select 
+                value={selectedExpiry} onChange={e => setSelectedExpiry(e.target.value)}
+                disabled={allExpiries.length === 0}
+                className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-md px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500 outline-none min-w-[120px]"
+              >
+                {allExpiries.length === 0 && <option value="">Loading...</option>}
+                {allExpiries.map(exp => <option key={exp} value={exp}>{exp}</option>)}
+              </select>
+            </div>
+
+            <div>
               <label className="block text-[10px] font-bold text-neutral-500 mb-1.5 tracking-wider">AUTO REFRESH (S)</label>
               <select 
                 value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}
@@ -213,7 +267,7 @@ export default function App() {
             </button>
             
             <button 
-              onClick={fetchChain} disabled={loading}
+              onClick={handleManualRefresh} disabled={loading || !selectedExpiry}
               className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
