@@ -56,8 +56,9 @@ export default function App() {
     try {
       const chainRes = await fetch(`/api/chain?symbol=${activeSymbol}&expiry=${expiryToFetch}`);
       if (!chainRes.ok) {
+        const text = await chainRes.text();
         let errMessage = 'Failed to fetch option chain';
-        try { const errData = await chainRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await chainRes.text(); }
+        try { const errData = JSON.parse(text); errMessage = errData.error || errMessage; } catch { errMessage = text || errMessage; }
         throw new Error(errMessage);
       }
       const { chain, vix } = await chainRes.json();
@@ -86,8 +87,9 @@ export default function App() {
       try {
         const expRes = await fetch(`/api/expiries?symbol=${activeSymbol}`);
         if (!expRes.ok) {
+          const text = await expRes.text();
           let errMessage = 'Failed to fetch expiries';
-          try { const errData = await expRes.json(); errMessage = errData.error || errMessage; } catch { errMessage = await expRes.text(); }
+          try { const errData = JSON.parse(text); errMessage = errData.error || errMessage; } catch { errMessage = text || errMessage; }
           throw new Error(errMessage);
         }
         const { expiries } = await expRes.json();
